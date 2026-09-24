@@ -1,0 +1,323 @@
+{
+  "observedOn": "2026-09-24",
+  "note": "Live discovery, not proof that every action executes. Active tools require a granted agent. Allowed is the existing default; provider consent and operator policies can narrow it. Cognee exposes only three reviewed tools. Zep and Honcho await authenticated discovery.",
+  "providers": [
+    {
+      "provider": "mem0",
+      "tools": [
+        {
+          "name": "delete_memory",
+          "schemaHash": "0178804f2233039b7cec699e90097f601025b76789d0b6823fda1fa639183761",
+          "risk": "destructive",
+          "status": "active",
+          "parameters": [
+            "memory_id"
+          ]
+        },
+        {
+          "name": "delete_entities",
+          "schemaHash": "0ca77774e6aa257a79504a8395eb4c230b65deeb365efcfb87023e2904d44c23",
+          "risk": "destructive",
+          "status": "active",
+          "parameters": [
+            "app_id",
+            "run_id",
+            "user_id",
+            "agent_id"
+          ]
+        },
+        {
+          "name": "get_event_status",
+          "schemaHash": "8bf86b31015e189cd66dc590b9034f40114c88bdbd888da3b205946e8387fafd",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "event_id"
+          ]
+        },
+        {
+          "name": "list_entities",
+          "schemaHash": "173f6a9b0b2d4f0bcb0e09b32cb1ab071367ea441e91cd21b80e521068e3dbe6",
+          "risk": "read",
+          "status": "active",
+          "parameters": []
+        },
+        {
+          "name": "search_memories",
+          "schemaHash": "e21f843ff32d984b5f81e3759d1a47d6d9b66d6ba445f217727e347912cdee06",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "query",
+            "top_k",
+            "rerank",
+            "filters",
+            "threshold"
+          ]
+        },
+        {
+          "name": "get_memories",
+          "schemaHash": "b7658cfe2f8e28467b34515c1b58be591be43d5fabfe78cead511cd0a694ece9",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "page",
+            "filters",
+            "page_size"
+          ]
+        },
+        {
+          "name": "list_events",
+          "schemaHash": "a0c4607c27b1793c15ef27403240535e4c85de9bac379ec36dbd584bcf0789d7",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "page",
+            "page_size",
+            "event_type"
+          ]
+        },
+        {
+          "name": "get_memory",
+          "schemaHash": "172789759d2c09fc4c121dfd2879ebc4e4017b86fb24c44fece86710f05177b2",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "memory_id"
+          ]
+        },
+        {
+          "name": "update_memory",
+          "schemaHash": "9a7a48567fbeee73814213f652b4b5be948713b3fb83daefe384319bc6b2f917",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "text",
+            "metadata",
+            "memory_id"
+          ]
+        },
+        {
+          "name": "add_memory",
+          "schemaHash": "6fe7a7d12c98939797ba039e2f29168364d89679e3beac3979d90c611205017f",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "text",
+            "infer",
+            "app_id",
+            "run_id",
+            "user_id",
+            "agent_id",
+            "messages",
+            "metadata"
+          ]
+        },
+        {
+          "name": "delete_all_memories",
+          "schemaHash": "771a1a9741504ed1d620bfd8b8ae623006885bb3188ac24987c38bc406be4852",
+          "risk": "destructive",
+          "status": "active",
+          "parameters": [
+            "app_id",
+            "run_id",
+            "user_id",
+            "agent_id"
+          ]
+        }
+      ]
+    },
+    {
+      "provider": "supermemory",
+      "tools": [
+        {
+          "name": "add_memory",
+          "schemaHash": "86e7c1f8f5ac6bbc0681f2d1c9013b388c80ce92866482820af98b1b252394f4",
+          "risk": "destructive",
+          "status": "active",
+          "parameters": [
+            "action",
+            "content",
+            "containerTag"
+          ]
+        },
+        {
+          "name": "guided-save",
+          "schemaHash": "34a6ba1bc76eea4b4ea114dbd2d165e635ac59d1e9a2db95f9b0f978b2738c2c",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "prefill"
+          ]
+        },
+        {
+          "name": "get_profile",
+          "schemaHash": "d6d7d9fcee64a3c65a805dee5cc1aa9d3e743dc1d2c2d986967b02e92b602699",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "containerTag"
+          ]
+        },
+        {
+          "name": "get_document",
+          "schemaHash": "40b366e576f748c471a0a88b2f5543d0fb3f61529686d14b2980cfa53827969a",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "documentId"
+          ]
+        },
+        {
+          "name": "fetch-graph-data",
+          "schemaHash": "3de9177b646fbc038c1c53065071c725b8738830e4e5710e439ef504de133ebd",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "page",
+            "limit",
+            "containerTag"
+          ]
+        },
+        {
+          "name": "list_spaces",
+          "schemaHash": "93ab7499dc3c616f8db8780fed0d9f69270803cda913882ad2ef3943db8d7225",
+          "risk": "read",
+          "status": "active",
+          "parameters": []
+        },
+        {
+          "name": "who_am_i",
+          "schemaHash": "93ab7499dc3c616f8db8780fed0d9f69270803cda913882ad2ef3943db8d7225",
+          "risk": "read",
+          "status": "active",
+          "parameters": []
+        },
+        {
+          "name": "select-space",
+          "schemaHash": "93ab7499dc3c616f8db8780fed0d9f69270803cda913882ad2ef3943db8d7225",
+          "risk": "write",
+          "status": "active",
+          "parameters": []
+        },
+        {
+          "name": "set-active-tag",
+          "schemaHash": "ec6d6baa715482bb4993a5e4b6dea8ce0257d44ae0508147b97f7c33745844f5",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "viewId",
+            "containerTag"
+          ]
+        },
+        {
+          "name": "memory-graph",
+          "schemaHash": "d6d7d9fcee64a3c65a805dee5cc1aa9d3e743dc1d2c2d986967b02e92b602699",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "containerTag"
+          ]
+        },
+        {
+          "name": "upload-file",
+          "schemaHash": "93ab7499dc3c616f8db8780fed0d9f69270803cda913882ad2ef3943db8d7225",
+          "risk": "write",
+          "status": "active",
+          "parameters": []
+        },
+        {
+          "name": "prepare-file-upload",
+          "schemaHash": "93ab7499dc3c616f8db8780fed0d9f69270803cda913882ad2ef3943db8d7225",
+          "risk": "write",
+          "status": "active",
+          "parameters": []
+        },
+        {
+          "name": "search_memory",
+          "schemaHash": "849932adedb079d4dd9e14f7a118dd98dea02be9127c9949075cd05c44d3769f",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "query",
+            "containerTag"
+          ]
+        },
+        {
+          "name": "list_documents",
+          "schemaHash": "e8fbd86a7359a3445acd2808cfb4a3cd56e577e8316e084f855664bad4836130",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "page",
+            "limit",
+            "containerTag"
+          ]
+        },
+        {
+          "name": "list_memories",
+          "schemaHash": "69980f2255bdbc5ada542b92d6d65181b65e54187a7365f7f220fdd439720d48",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "page",
+            "limit",
+            "containerTag"
+          ]
+        },
+        {
+          "name": "save-memory",
+          "schemaHash": "ee3ce3f24cb3fd86b64427bc3a6aac9dd62950a5673d4e4d28473a96c3c8ca84",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "viewId",
+            "content",
+            "containerTag"
+          ]
+        }
+      ]
+    },
+    {
+      "provider": "cognee",
+      "tools": [
+        {
+          "name": "forget",
+          "schemaHash": "a2cd38085419a8adb22cb7adc0724ad6cc83b65910a8eaccd553eaccf1be3d29",
+          "risk": "destructive",
+          "status": "active",
+          "parameters": [
+            "dataset",
+            "everything"
+          ]
+        },
+        {
+          "name": "remember",
+          "schemaHash": "0b7303340d89c018050f49fbcd4af0cb041a1b2878693e6494eadc9cd4c75f94",
+          "risk": "write",
+          "status": "active",
+          "parameters": [
+            "data",
+            "session_id",
+            "dataset_name",
+            "custom_prompt"
+          ]
+        },
+        {
+          "name": "recall",
+          "schemaHash": "b6288c8c7996f3026f8b89ab06eb4339c1f5eb220c62294462ec569f1b6580f4",
+          "risk": "read",
+          "status": "active",
+          "parameters": [
+            "query",
+            "top_k",
+            "datasets",
+            "session_id",
+            "search_type",
+            "system_prompt"
+          ]
+        }
+      ]
+    }
+  ]
+}

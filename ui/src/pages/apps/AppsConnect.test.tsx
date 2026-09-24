@@ -429,6 +429,14 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(finishAppMock).not.toHaveBeenCalled();
   });
 
+  it.each(["mem0", "zep", "supermemory", "cognee", "honcho"])("blocks direct %s setup while memory connectors are off", async (provider) => {
+    mockSearch.value = `source=${provider}`;
+    await render();
+    expect(container.textContent).toContain("Enable memory connectors");
+    expect(connectAppMock).not.toHaveBeenCalled();
+    expect(startOAuthMock).not.toHaveBeenCalled();
+  });
+
   it.each(["zapier", "arcade", "composio", "executor"])("blocks direct %s setup while MCP aggregators are off", async (provider) => {
     mockSearch.value = `source=${provider}`;
     await render();

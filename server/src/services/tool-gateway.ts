@@ -1,3 +1,4 @@
+import { COGNEE_STDIO_TEMPLATE, cogneeCloudUrl, normalizeCogneeResult } from "./cognee-connection.js";
 import { HttpError } from "../errors.js";
 import { claimSlackRateLimitRetry } from "./connectors/slack-retry.js";
 import { resolveSlackTaskAuthority } from "./connectors/slack-authority.js";
@@ -423,6 +424,7 @@ const BUILTIN_LOCAL_STDIO_RUNTIME_TEMPLATES: Record<
   string,
   Omit<LocalStdioRuntimeTemplate, "templateId">
 > = {
+  "paperclip.cognee-cloud": COGNEE_STDIO_TEMPLATE,
   "paperclip.google-sheets": {
     command: "paperclip-google-sheets-mcp-server",
     args: [],
@@ -4936,6 +4938,12 @@ export function createToolGatewayService(
         );
       }
     }
+    if (template.templateId === "paperclip.cognee-cloud") {
+      try { cogneeCloudUrl(env.COGNEE_BASE_URL ?? ""); }
+      catch {
+        throw new ToolGatewayHttpError(422, "Reconnect Cognee with the tenant API Base URL from its API Keys page.", "cognee_cloud_url_invalid");
+      }
+    }
     return env;
   }
 
@@ -6254,6 +6262,7 @@ export function createToolGatewayService(
     tool: ToolGatewayDescriptor,
     parameters: unknown,
     ms: number,
+    useProviderDefaultTimeout = false,
   ): Promise<RemoteHttpExecutionResult> {
     const { entry, connection } = await resolveConnectedLocalStdioTool(
       session,
@@ -6292,12 +6301,14 @@ export function createToolGatewayService(
           template,
           env,
           parameters,
-          timeoutMs: ms,
+          // Cognee imports its graph runtime before each stdio session and
+          // recall can perform LLM synthesis. Keep explicit caller limits.
+          timeoutMs: useProviderDefaultTimeout && template.templateId === "paperclip.cognee-cloud" ? 60_000 : ms,
         });
       },
     );
     return {
-      result: normalizeMcpToolResult(result, "local_stdio", true),
+      result: normalizeMcpToolResult(template.templateId === "paperclip.cognee-cloud" ? normalizeCogneeResult(result) : result, "local_stdio", true),
     };
   }
 
@@ -7111,6 +7122,7 @@ export function createToolGatewayService(
                 args.tool,
                 args.parameters,
                 executionTimeoutMs,
+                args.timeoutMs === undefined,
               )
             : null;
       if (!connectedMcpExecution) {
@@ -10397,6 +10409,7 @@ export function createToolGatewayService(
                   tool,
                   effectiveParameters,
                   executionTimeoutMs,
+                  input.timeoutMs === undefined,
                 )
               : null;
         const result = connectedMcpExecution
