@@ -437,6 +437,14 @@ describe("AppsConnect — Connect with a link (M4 frame)", () => {
     expect(startOAuthMock).not.toHaveBeenCalled();
   });
 
+  it("allows an existing memory connection to reconnect while setup is hidden", async () => {
+    mockSearch.value = "source=mem0&reconnect=existing-memory";
+    getConnectionMock.mockResolvedValue({ id: "existing-memory", status: "active", config: { sourceTemplateKey: "mem0" } });
+    await render();
+    expect(getConnectionMock).toHaveBeenCalledWith("existing-memory");
+    expect(container.textContent).not.toContain("Enable memory connectors");
+  });
+
   it.each(["zapier", "arcade", "composio", "executor"])("blocks direct %s setup while MCP aggregators are off", async (provider) => {
     mockSearch.value = `source=${provider}`;
     await render();

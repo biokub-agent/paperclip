@@ -1,8 +1,8 @@
-/** Reviewed contract from cognee-mcp 0.5.5 (PyPI). Only these tools are exposed. */
+/** Reviewed Cognee Cloud contract from cognee-mcp 0.5.5. Executed by the bundled bridge below. */
 export const COGNEE_STDIO_TEMPLATE = {
   name: "Cognee Cloud",
-  command: "uvx",
-  args: ["--from", "cognee-mcp==0.5.5", "cognee-mcp"],
+  command: null,
+  args: [] as string[],
   envKeys: ["COGNEE_BASE_URL", "COGNEE_API_KEY"],
   tools: [
     {
@@ -40,13 +40,74 @@ export function cogneeCloudUrl(value: string): URL {
   return url;
 }
 
-/** 0.5.5 reports tool failures as text instead of setting MCP isError. */
-export function normalizeCogneeResult(result: unknown): unknown {
-  if (!result || typeof result !== "object" || Array.isArray(result)) return result;
-  const record = result as Record<string, unknown>;
-  const failed = Array.isArray(record.content) && record.content.some((item) =>
-    item && typeof item === "object" && item.type === "text" && typeof item.text === "string"
-    && /^Error: (?:Remember failed:|Recall failed:|Forget failed:|Specify 'dataset')/.test(item.text),
-  );
-  return failed ? { ...record, isError: true } : result;
+/**
+ * Bundled bridge for the three reviewed Cloud operations. No package manager,
+ * subprocess, runtime downloads, or inherited host environment is involved.
+ * The gateway supplies its DNS/redirect-guarded, response-bounded HTTP client.
+ */
+export async function callCogneeCloud(input: {
+  baseUrl: string;
+  apiKey: string;
+  tool: string;
+  parameters: Record<string, unknown>;
+  request: (url: URL, init: RequestInit) => Promise<unknown>;
+  signal: AbortSignal;
+}) {
+  const base = cogneeCloudUrl(input.baseUrl);
+  if (!input.apiKey) throw new Error("Reconnect Cognee to restore its Cloud API key.");
+  const tenant = /^tenant-([0-9a-f-]{36})\./i.exec(base.hostname)?.[1];
+  const headers: Record<string, string> = { "X-Api-Key": input.apiKey };
+  if (tenant) headers["X-Tenant-Id"] = tenant;
+  const args = input.parameters;
+  const post = async (path: string, body: Record<string, unknown> | FormData) => {
+    const url = new URL(path, base);
+    const request = new Request(url, { method: "POST",
+      headers: body instanceof FormData ? headers : { ...headers, "Content-Type": "application/json" },
+      body: body instanceof FormData ? body : JSON.stringify(body) });
+    // The guarded client pins DNS through node:http and accepts byte buffers,
+    // not fetch's FormData. Serialize with the matching multipart boundary.
+    return input.request(url, { method: "POST", signal: input.signal,
+      headers: Object.fromEntries(request.headers), body: Buffer.from(await request.arrayBuffer()), redirect: "manual" });
+  };
+  let result: unknown;
+  if (input.tool === "remember") {
+    const dataset = args.dataset_name || "paperclip_memory";
+    if (args.session_id) {
+      if (args.custom_prompt) throw new Error("custom_prompt is not supported with session_id in Cognee Cloud.");
+      result = await post("/api/v1/remember/entry", {
+        entry: { type: "qa", question: "", answer: args.data, context: "" },
+        dataset_name: dataset, session_id: args.session_id,
+      });
+    } else {
+      const form = new FormData();
+      form.set("data", new Blob([String(args.data)], { type: "text/plain" }), "memory.txt");
+      form.set("datasetName", String(dataset));
+      if (args.custom_prompt) form.set("custom_prompt", String(args.custom_prompt));
+      result = await post("/api/v1/remember", form);
+    }
+  } else if (input.tool === "recall") {
+    let datasets = typeof args.datasets === "string" ? args.datasets.split(",").map(v => v.trim()).filter(Boolean) : [];
+    if (!datasets.length && !args.session_id) {
+      const available = await input.request(new URL("/api/v1/datasets/", base), {
+        method: "GET", headers, signal: input.signal, redirect: "manual",
+      });
+      if (!Array.isArray(available)) throw new Error("Cognee returned an invalid dataset list.");
+      datasets = available.flatMap(value => value && typeof value.name === "string" ? [value.name] : []);
+    }
+    result = await post("/api/v1/recall", {
+      query: args.query, top_k: args.top_k ?? 15,
+      search_type: typeof args.search_type === "string" ? args.search_type.toUpperCase() : null,
+      ...(datasets.length ? { datasets } : {}),
+      ...(args.session_id ? { session_id: args.session_id } : {}),
+      ...(args.system_prompt ? { system_prompt: args.system_prompt } : {}),
+    });
+  } else if (input.tool === "forget") {
+    if (!args.dataset && args.everything !== true) throw new Error("Specify a dataset or set everything to true.");
+    result = await post("/api/v1/forget", {
+      everything: args.everything === true, ...(args.dataset ? { dataset: args.dataset } : {}),
+    });
+  } else {
+    throw new Error("Unreviewed Cognee action.");
+  }
+  return { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: { result }, isError: false };
 }

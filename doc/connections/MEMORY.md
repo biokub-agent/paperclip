@@ -2,8 +2,9 @@
 
 Enable **Settings → Experimental → Memory connectors**, then open **Connectors**
 and choose Mem0, Zep, Supermemory, Cognee, or Honcho. The flag defaults to off.
-It hides catalog setup and rejects curated setup, reconnect, and OAuth-start
-requests on the server. Existing connections remain available and keep running.
+It hides catalog setup and rejects new curated setup and initial OAuth-start
+requests on the server. Existing connections keep running and can reconnect or
+rotate credentials without re-enabling the toggle.
 Generic custom MCP connections retain their existing behavior.
 
 These are ordinary company-scoped tool connections. There is no separate memory
@@ -20,7 +21,7 @@ Official documentation and public endpoint discovery checked September 24, 2026.
 | [Mem0](https://docs.mem0.ai/platform/mem0-mcp) | Remote MCP, `https://mcp.mem0.ai/mcp/`, Bearer API key | Create a key in the Mem0 dashboard. The provider key controls project access; user/agent/session selectors are tool arguments. |
 | [Zep](https://help.getzep.com/memory-mcp-server) | Remote MCP, `https://api.getzep.com/mcp`, OAuth | Configure Memory MCP and the identity provider in Zep first. A project administrator assigns MCP seats and shared graphs. Sign in with the assigned work identity. An ordinary Zep API key is not the credential for this endpoint. |
 | [Supermemory](https://supermemory.ai/docs/supermemory-mcp/mcp) | Remote MCP, `https://mcp.supermemory.ai/mcp`, OAuth | Sign in and select the workspace, read/write access, and optional container tags offered by Supermemory. Developer API keys are separate from hosted MCP sign-in. |
-| [Cognee](https://docs.cognee.ai/cognee-cloud/connections/cloud-mcp) | Approved local stdio client, Cloud API key | Copy the tenant API Base URL and key from Cognee Cloud → API Keys. Requires an active Cloud workspace and `uv` on the runtime host. Public deployments require the existing trusted MCP runtime host. |
+| [Cognee](https://docs.cognee.ai/cognee-cloud/connections/cloud-mcp) | Bundled Cloud API bridge, Cloud API key | Copy the tenant API Base URL and key from Cognee Cloud → API Keys. Requires an active Cloud workspace. The existing approved-template runtime gate still applies in public deployments. |
 | [Honcho](https://honcho.dev/docs/v3/guides/integrations/mcp) | Remote MCP, `https://mcp.honcho.dev`, Bearer API key | Create an organization and API key in the Honcho dashboard. Workspace, peer, and session selectors remain explicit provider tool arguments. |
 
 Zep and Supermemory use user grants, the existing PKCE OAuth broker, and automatic
@@ -30,20 +31,22 @@ Supermemory advertises `https://api.supermemory.ai/api/auth`, with
 `openid profile email offline_access`. Neither requires Paperclip ID or a new
 Paperclip-hosted credential service.
 
-Cognee does not advertise a hosted MCP endpoint. Its approved template runs
-`uvx --from cognee-mcp==0.5.5 cognee-mcp`. The published package's remote API mode
-receives only `COGNEE_BASE_URL` and `COGNEE_API_KEY` from encrypted credential
-references. The base URL must be an HTTPS tenant origin under `*.aws.cognee.ai`;
-credentials, ports, paths, query strings, and fragments are rejected. Setup and
-health verify the key with the Cloud datasets endpoint using the guarded HTTP
-client. That verifies Cloud access; the runtime still needs a working `uvx`
-installation and access to the official package registry on first launch. Prewarm
-with `uvx --from cognee-mcp==0.5.5 cognee-mcp --help`; the initial dependency
-download can take several minutes. Calls without an explicit timeout receive
-60 seconds for client startup and retrieval synthesis. Memory indexing is
-asynchronous: an immediate recall after remember may return HTTP 409 until the
-dataset is ready. The gateway recognizes the pinned client's text-only failure
-responses and records them as errors, rather than successful tool calls.
+Cognee does not advertise a hosted MCP endpoint. Paperclip bundles a narrow
+Cloud API bridge for `remember`, `recall`, and `forget`, matching the reviewed
+remote-mode contract from `cognee-mcp` 0.5.5. The existing approved template ID
+and credential paths remain compatible, but no process or package manager runs:
+there is no runtime registry resolution, transitive dependency installation, or
+credential-bearing subprocess. The bridge uses the gateway's guarded HTTP
+client and bounded response reader. It sends credentials only to the validated
+HTTPS tenant origin under `*.aws.cognee.ai`; redirects, credentials in URLs,
+ports, paths, query strings, and fragments are rejected.
+
+Setup validates Cloud access with the datasets endpoint. Scheduled health
+checks validate the URL and vault references without probing the Cloud API, so
+a transient provider timeout cannot hide working tools. Actual calls still
+report provider failures. Calls without an explicit timeout receive 60 seconds
+for retrieval synthesis. Indexing is asynchronous, so an immediate recall after
+remember may return HTTP 409 until the dataset is ready.
 
 ## Credential and governance boundaries
 
@@ -123,7 +126,7 @@ Live observations from the isolated `codex/memory-connectors` checkout:
   personal remote credential-path correction described below.
 
 All five providers now have authenticated managed-tool E2E evidence. Supermemory
-coverage remains limited to its existing read-only OAuth consent. Discovery does
+now also has verified scoped writes and semantic recall, as recorded below. Discovery does
 not establish that every individual tool or advanced provider feature was tested.
 No real memories were uploaded for testing. The synthetic Cognee dataset is
 `paperclip_memory_connector_smoke_20260924`; the Mem0 test user and Supermemory
@@ -305,6 +308,29 @@ These are simulated provider journeys and do not replace live account tests.
   Final server typecheck and build passed. Relay checks cover configured gateway
   reuse, gateway errors, revocation, partial bindings, credential isolation, and
   planning/ask restrictions.
+
+### Supermemory write completion (September 24)
+
+The original read-only grant was replaced through the browser with a new
+read/write OAuth grant restricted to `paperclip-memory-smoke-20260924` and the
+same test agent. The old local connection was removed. `who_am_i` independently
+returned scoped `permission: write`; all 16 Paperclip tools remain Allowed.
+
+Local run `fb67a991-2960-47e5-8f79-94282c65d2ec` saved the exact synthetic fact
+“The Supermemory test navigator keeps a turquoise compass in a maple cabinet.”
+Document `zUk5wpBu79rCMWu9Yubd9j` initially stayed queued, so the task correctly
+did not claim immediate recall. Supermemory's browser console later displayed
+Done and the exact stored content.
+
+Daytona run `bab3abd3-617e-4598-b0de-213d5c26f075` performed a second write:
+“The Daytona Supermemory test pilot keeps a coral sextant in a walnut drawer.”
+Document `C5HY2CWANHZZa3TckJUDYN` reached Done. Managed `get_document` returned
+its exact content; `search_memory` returned both this fact and the earlier
+local fact at 93% relevance to their respective queries. The task audit records
+10 successful calls, including the write, document reads, and semantic searches.
+No provider credentials entered the sandbox. The native PRP relay handled all
+calls without a public tunnel. The local agent configuration was restored, and
+sandbox `6a9723dd-972e-4933-b227-6b8e7e2133ae` was deleted and verified absent.
 
 ## Branding provenance
 

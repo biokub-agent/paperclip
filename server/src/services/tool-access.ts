@@ -7009,7 +7009,7 @@ export function toolAccessService(
     return apiStatus === "available" ? [...descriptors, ...RAILWAY_TOOLS] : descriptors;
   }
 
-  async function validateCogneeConnection(connection: typeof toolConnections.$inferSelect, actor?: ActorInfo) {
+  async function validateCogneeConnection(connection: typeof toolConnections.$inferSelect, actor?: ActorInfo, probe = true) {
     if (connection.config.templateId !== "paperclip.cognee-cloud") return;
     const grant = await vaultGrantForConnection(connection, actor);
     const refs = grant?.credentialSecretRefs ?? connection.credentialSecretRefs;
@@ -7027,6 +7027,9 @@ export function toolAccessService(
     let base: URL;
     try { base = cogneeCloudUrl(values.COGNEE_BASE_URL!); }
     catch { throw badRequest("Copy the tenant API Base URL from Cognee’s API Keys page."); }
+    // Scheduled health checks validate configuration and vault access. A transient
+    // Cloud probe must not withdraw an already assigned local tool catalog.
+    if (!probe) return;
     const response = await requestRemoteHttpEndpoint(new URL("/api/v1/datasets/", base), {
       method: "GET", headers: { "X-Api-Key": values.COGNEE_API_KEY! }, signal: AbortSignal.timeout(15_000),
     });
@@ -7268,7 +7271,7 @@ export function toolAccessService(
       } else if (connection.transport === "local_stdio") {
         await resolveCredentialHeaders(connection);
         await stdioTemplateId(connection.companyId, connection.config);
-        await validateCogneeConnection(connection, actor);
+        await validateCogneeConnection(connection, actor, false);
       } else {
         throw unsupportedToolConnectionTransport();
       }
@@ -11864,8 +11867,8 @@ export function toolAccessService(
     return `${base.slice(0, 151).trimEnd()} (${randomUUID().slice(0, 6)})`;
   }
 
-  async function assertExperimentalConnectorSetupEnabled(provider: unknown, method: unknown) {
-    if (isMemoryConnectorId(provider)
+  async function assertExperimentalConnectorSetupEnabled(provider: unknown, method: unknown, existing = false) {
+    if (!existing && isMemoryConnectorId(provider)
       && !(await instanceSettingsService(db).getExperimental()).enableMemoryConnectors) {
       throw forbidden("Enable memory connectors in Settings → Experimental to set up this connection", { code: "memory_connectors_disabled" });
     }
@@ -12025,7 +12028,10 @@ export function toolAccessService(
       ? connectionMethodFor(galleryEntry, inferredMethodKey)
       : null;
     const remoteMcpConnector = isRemoteMcpConnectorMethod(galleryEntry?.slug, method?.key);
-    await assertExperimentalConnectorSetupEnabled(galleryEntry?.slug, method?.key);
+    await assertExperimentalConnectorSetupEnabled(galleryEntry?.slug, method?.key, Boolean(
+      input.reconnectConnectionId && requestedResumeConnection?.status !== "draft"
+      && requestedResumeConnection?.config.sourceTemplateKey === galleryEntry?.slug,
+    ));
     if (galleryEntry && input.link) {
       const acceptsProviderGeneratedUrl =
         method?.transport === "mcp_remote" &&
@@ -13952,7 +13958,7 @@ export function toolAccessService(
   ): Promise<ToolConnectionHealthCheckResult> {
     const connection = await getConnectionRow(connectionId, companyId);
     assertSupportedConnection(connection);
-    await assertExperimentalConnectorSetupEnabled(connection.config.sourceTemplateKey, connection.config.connectionMethodKey);
+    await assertExperimentalConnectorSetupEnabled(connection.config.sourceTemplateKey, connection.config.connectionMethodKey, connection.status !== "draft");
     if (connection.status === "archived")
       throw conflict("Archived app connections cannot be reconnected");
     if (connection.credentialSource === "vercel_connect") {
@@ -14021,17 +14027,20 @@ export function toolAccessService(
         );
         continue;
       }
-      const secret = await secrets.create(
-        companyId,
-        {
-          name: `${connection.name} ${field.label} ${randomUUID().slice(0, 8)}`,
-          key: `tool_app.${randomUUID()}.${field.configPath.replace(/[^a-z0-9_:-]+/gi, "_")}`,
-          provider: "local_encrypted",
-          value,
-          description: `Credential for ${connection.name} (${field.configPath}).`,
-        },
-        actorForSecret(actor),
-      );
+      const metadata = {
+        name: `${connection.name} ${field.label} ${randomUUID().slice(0, 8)}`,
+        key: `tool_app.${randomUUID()}.${field.configPath.replace(/[^a-z0-9_:-]+/gi, "_")}`,
+        provider: "local_encrypted" as const,
+        description: `Credential for ${connection.name} (${field.configPath}).`,
+      };
+      const secret = personalIdentity
+        ? await db.transaction(async (tx) => {
+            const vault = secretService(tx as unknown as Db);
+            const definition = await vault.createUserSecretDefinition(companyId, metadata, actorForSecret(actor));
+            return vault.createCurrentUserSecretValue(companyId, personalIdentity.subjectUserId,
+              { definitionId: definition.id, value }, actorForSecret(actor));
+          })
+        : await secrets.create(companyId, { ...metadata, value }, actorForSecret(actor));
       credentialSecretRefs.push({
         secretId: secret.id,
         versionSelector: "latest",
@@ -14128,7 +14137,7 @@ export function toolAccessService(
   ): Promise<ToolOAuthStartResult> {
     let connection = await getConnectionRow(connectionId, companyId);
     assertSupportedConnection(connection);
-    await assertExperimentalConnectorSetupEnabled(connection.config.sourceTemplateKey, connection.config.connectionMethodKey);
+    await assertExperimentalConnectorSetupEnabled(connection.config.sourceTemplateKey, connection.config.connectionMethodKey, connection.status !== "draft");
     if (connection.status === "archived")
       throw conflict("Archived app connections cannot start sign in");
     const sourceTemplateKey =

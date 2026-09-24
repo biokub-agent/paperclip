@@ -31,7 +31,7 @@
       "defaults": {
         "templateKey": "paperclip.cognee-cloud"
       },
-      "guidanceMd": "Copy the API Base URL and create an API key on Cognee's API Keys page. Use a Cloud workspace with an active subscription. Prepare the runtime host with uvx --from cognee-mcp==0.5.5 cognee-mcp --help before the first call; the initial package download can take several minutes.",
+      "guidanceMd": "Copy the API Base URL and create an API key on Cognee's API Keys page. Use a Cloud workspace with an active subscription. Paperclip uses its bundled Cloud client; no extra runtime installation is required.",
       "riskTier": "S3",
       "label": "Connect Cognee Cloud",
       "credentialFields": [
