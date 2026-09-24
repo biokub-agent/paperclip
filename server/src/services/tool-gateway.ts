@@ -4099,10 +4099,10 @@ export function createToolGatewayService(
           connection,
           grant,
           grantRef,
-          // OAuth grants declare their canonical oauth.* path. Treating
-          // this header projection as a generic credentials.* binding loses
-          // the personal secret declaration created by the OAuth callback.
-          grantRef.configPath.startsWith("oauth.")
+          // Personal grants resolve against their declared vault path. API-key
+          // paths already include credentials.* or headers.*; prepending again
+          // breaks the declaration just as it does for OAuth token paths.
+          grant.kind === "user" || grantRef.configPath.startsWith("oauth.")
             ? grantRef.configPath
             : `credentials.${ref.name}`,
         );

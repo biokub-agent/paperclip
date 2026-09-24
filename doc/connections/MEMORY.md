@@ -92,7 +92,7 @@ separately below; mocked tests and Storybook are not live proof.
 
 The [sanitized live tool inventory](memory-tool-inventory.json) records every
 discovered name, schema hash, parameter name, and risk classification for the
-three connected providers. Zep and Honcho have no authenticated inventory yet.
+five connected providers (82 tools total).
 
 Live observations from the isolated `codex/memory-connectors` checkout:
 
@@ -108,12 +108,23 @@ Live observations from the isolated `codex/memory-connectors` checkout:
   it after indexing completed. Personal setup exposes the three reviewed tools.
   Paperclip gateway recall returned the expected blue notebook fact (10.6s).
   A nonexistent test dataset returned a tool error, correctly recorded as failure.
-- Zep: Google sign-in reached “Account not found”; account creation is pending.
-- Honcho: Google sign-in succeeded, but organization onboarding repeatedly returned
-  “Could not create your organization. Please try again.” No key could be created.
+- Zep: Google signup and the isolated `Memory connector test` project are ready.
+  Its project API key is saved in `~/.secrets` (mode 0600), separately from the
+  hosted MCP OAuth grant. Enabled Google Workspace MCP with writes allowed and
+  automatic user creation disabled; created only the matching test user using
+  the documented API. Paperclip dynamic registration and the explicitly approved
+  `graph:read` / `graph:write` grant completed. Live discovery returned 12 tools.
+  The Codex browser's automated form submission stalled; a fresh flow and the
+  user's final consent click completed authorization.
+- Honcho: initial organization creation failed repeatedly, including after a
+  fresh Google login. A subsequent retry succeeded and issued the API key,
+  saved in `~/.secrets` (mode 0600). Personal connection setup discovered 40 tools.
+  No payment method was added. The real agent test exposed and verified the
+  personal remote credential-path correction described below.
 
-Zep and Honcho remain unverified against authenticated provider accounts. Public
-protocol discovery and deterministic fixtures do not replace that live proof.
+All five providers now have authenticated managed-tool E2E evidence. Supermemory
+coverage remains limited to its existing read-only OAuth consent. Discovery does
+not establish that every individual tool or advanced provider feature was tested.
 No real memories were uploaded for testing. The synthetic Cognee dataset is
 `paperclip_memory_connector_smoke_20260924`; the Mem0 test user and Supermemory
 consent tag are `paperclip-memory-smoke-20260924`.
@@ -148,15 +159,30 @@ tools and retrieved the approved Mem0 memory.
   A second browser-triggered agent run confirmed both the successful scoped
   search and the corrected error response; audit records show `call_failed`,
   `outcome: failure`, and `reasonCode: tool_error` for the denied search.
-- **MEM-4 / Zep** and **MEM-5 / Honcho:** readiness tasks retain the account
-  prerequisites above. They do not count as successful authenticated provider
-  E2E tests.
+- **MEM-4 / Zep:** run `959d37a2-5d06-4f8b-bbfd-b4d751949fc8` called
+  `add_memory` and `search_graph` through the managed connector. The first
+  episode search returned the exact golden astrolabe fact and matching episode
+  `9133fe20-3bf0-46e4-bb48-d58c697d141d`. The episode was not yet processed;
+  raw episode retrieval passed, while derived graph processing is not claimed.
+- **MEM-5 / Honcho:** the first authenticated run exposed a gateway bug: a
+  personal API-key path `credentials.authorization` was incorrectly prefixed a
+  second time during vault resolution. Personal remote grants now use their
+  declared path, with regression coverage for API keys, custom headers, and
+  OAuth. After restart, run `f8498aa1-5c84-48f5-8a94-3b603ea30e9a` made seven
+  successful managed calls: list/create workspace, create peer/session, add the
+  peer, add a message, and retrieve messages. Dedicated workspace
+  `paperclip-memory-e2e-20260924`, peer `synthetic-test-explorer`, session
+  `synthetic-observatory-session`, message `q3nOttElad3g_JACmizQd` returned the
+  exact violet sundial fact. No approval or provider errors occurred on the
+  successful run. Its initial discovery still reflected the earlier failed
+  health check; successful calls restored connection health.
 
 All tools default to **Allowed**, including writes and destructive actions.
 The temporary Mem0 **Ask first** test override was removed after the approval
-test. Effective agent access was checked again: Mem0 11/11, Cognee 3/3, and
-Supermemory 16/16 allowed, with zero ask-first or off actions. Provider OAuth
-consent remains a separate boundary from Paperclip tool permissions.
+test. Effective agent access was checked again: Mem0 11/11, Cognee 3/3,
+Supermemory 16/16, Zep 12/12, and Honcho 40/40 allowed, with zero ask-first or
+off actions. Provider OAuth consent remains a separate boundary from Paperclip
+tool permissions.
 
 ### Daytona sandbox verification (September 24, 2026)
 
@@ -164,8 +190,9 @@ Browser-created **MEM-6** runs the same three connected providers through a
 native `paperclip_runner` Codex agent in a real Daytona Linux x86_64 sandbox.
 The acceptance task uses only synthetic data and managed tools: a Mem0 copper
 lantern fact, a dedicated Cognee dataset, and Supermemory searches inside and
-outside the existing read-only consent. Zep and Honcho retain the account
-prerequisites above. This is a manual Product E2E attempt, not a full eval campaign.
+outside the existing read-only consent. This first run predates Zep and Honcho
+account setup; their subsequent local proof appears above. This is a manual
+Product E2E attempt, not a full eval campaign.
 
 The immutable sandbox image is
 `ghcr.io/paperclipai/paperclip-daytona-runner@sha256:b782947dc9738038570308686858dfb37fd731aba2f82944b6bb665a419e2f24`.
@@ -193,7 +220,7 @@ also rotates when introducing the relay. An intermediate retry discovered all
 30 tools server-side but resumed an old provider catalog; it made no provider
 calls and is not counted as a pass.
 
-The final browser-triggered run `16c288bc-27c3-4010-b8f8-e3d24d007c59` completed
+The first successful browser-triggered run `16c288bc-27c3-4010-b8f8-e3d24d007c59` completed
 **MEM-6** successfully in 1m 36s with the default configured `gpt-5.6-sol` model.
 Task-scoped gateway audit records independently confirm six calls:
 
@@ -214,6 +241,31 @@ Allowed. This proves the connected Mem0, Cognee, and Supermemory journeys on
 remote native Codex; it does not establish live Zep/Honcho access or Supermemory
 writes beyond its existing read-only consent. Failed setup attempts are retained
 in the task history. The disposable environment is removed after verification.
+
+After Zep and Honcho onboarding completed, **MEM-6** ran again in a fresh
+Daytona sandbox: `b41a45a5-6040-429d-82f3-f048f45205a8`, 2m 4s. The browser
+showed Done, and task-scoped gateway audit independently confirmed **10
+successful provider calls across all five providers**:
+
+- Mem0 retrieved the existing copper lantern memory and matching ID.
+- Cognee performed two read-only recalls; the second returned the exact stored
+  sentence from the dedicated dataset.
+- Supermemory completed a search within the existing consented tag (zero results).
+- Zep stored the jade sextant fact once and retrieved its exact text through
+  episode search, with matching UUID `8ef23967-bc98-410e-9e06-03669da5d7dd`.
+- Honcho created session `daytona-memory-final-20260924` in the existing synthetic
+  workspace, added the test peer, stored the ivory compass fact, and retrieved
+  the exact message `e7g4wGXfWR5_rdb4bk6zN`.
+
+The agent confirmed Linux x86_64, user `daytona`, and working directory
+`/home/daytona/paperclip-workspace`. No unexpected approval or connector error
+occurred. The control plane relayed all managed provider calls through the native
+runner channel, with no provider keys in the agent environment or public tunnel.
+All five connections finished healthy. The original local test-agent configuration
+was restored, the disposable environment removed, and Daytona confirmed sandbox
+`682ca187-765e-4b61-9038-747d2649e76a` no longer exists. Provider test memories
+remain available for inspection. Supermemory writes and advanced derived-memory
+features remain outside this test's coverage.
 
 ### Storybook walkthrough checks
 
@@ -246,8 +298,8 @@ These are simulated provider journeys and do not replace live account tests.
   the final targeted memory suite passed. The full suite is not claimed green.
 - Codex managed-home regression suite: 53 passed after the live-task fix;
   adapter typecheck and build passed.
-- Gateway acceptance/service regression suites: 103 passed after the provider
-  error-reporting fix; server typecheck passed.
+- Gateway acceptance/service regression suites: 106 passed after the personal
+  remote credential-path fix; final server typecheck and build passed.
 - Native relay/session/authority regressions: 534 passed, followed by 36 final
   relay/authority checks covering readable tool names and live task-mode changes.
   Final server typecheck and build passed. Relay checks cover configured gateway
