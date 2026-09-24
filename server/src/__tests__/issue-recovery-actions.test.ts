@@ -758,6 +758,44 @@ describeEmbeddedPostgres("issue recovery actions", () => {
     ).toBe(true);
   });
 
+  it("cancels a stranded routine execution instance instead of blocking it", async () => {
+    const { companyId, coderId, sourceIssue } = await seedCompany();
+    const routineId = randomUUID();
+    const enqueueWakeup = vi.fn(async () => null);
+    const recovery = recoveryService(db, { enqueueWakeup });
+
+    await recovery.escalateStrandedAssignedIssue({
+      issue: { ...sourceIssue, originKind: "routine_execution", originId: routineId },
+      previousStatus: "in_progress",
+      latestRun: {
+        id: randomUUID(),
+        agentId: coderId,
+        status: "failed",
+        error: "API Error: 401 Invalid authentication credentials",
+        errorCode: "adapter_failed",
+        contextSnapshot: { retryReason: "issue_continuation_needed" },
+        livenessState: "needs_followup",
+      } as const,
+    });
+
+    const [updatedIssue] = await db.select().from(issues).where(eq(issues.id, sourceIssue.id));
+    expect(updatedIssue?.status).toBe("cancelled");
+
+    // No blocked-with-no-blocker state, no recovery action, and nobody woken to take over:
+    // the next scheduled fire supersedes this instance.
+    const actionRows = await db
+      .select()
+      .from(issueRecoveryActions)
+      .where(eq(issueRecoveryActions.sourceIssueId, sourceIssue.id));
+    expect(actionRows).toHaveLength(0);
+    const recoveryIssues = await db
+      .select()
+      .from(issues)
+      .where(and(eq(issues.companyId, companyId), eq(issues.originKind, "stranded_issue_recovery")));
+    expect(recoveryIssues).toHaveLength(0);
+    expect(enqueueWakeup).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["process_lost", undefined],
     ["adapter_failed", "successful_run_missing_state"],
