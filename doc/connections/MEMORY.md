@@ -158,7 +158,75 @@ test. Effective agent access was checked again: Mem0 11/11, Cognee 3/3, and
 Supermemory 16/16 allowed, with zero ask-first or off actions. Provider OAuth
 consent remains a separate boundary from Paperclip tool permissions.
 
-### Local checks
+### Daytona sandbox verification (September 24, 2026)
+
+Browser-created **MEM-6** runs the same three connected providers through a
+native `paperclip_runner` Codex agent in a real Daytona Linux x86_64 sandbox.
+The acceptance task uses only synthetic data and managed tools: a Mem0 copper
+lantern fact, a dedicated Cognee dataset, and Supermemory searches inside and
+outside the existing read-only consent. Zep and Honcho retain the account
+prerequisites above. This is a manual Product E2E attempt, not a full eval campaign.
+
+The immutable sandbox image is
+`ghcr.io/paperclipai/paperclip-daytona-runner@sha256:b782947dc9738038570308686858dfb37fd731aba2f82944b6bb665a419e2f24`.
+The remote runner binary was extracted from that image (SHA-256
+`5067194e4a4eff0946e312b162e78a46184dae49c29f5699be81fec6cfd0b9d7`).
+The first attempt failed before provider startup because a macOS host needs
+`PAPERCLIP_RUNNER_REMOTE_BINARY_PATH` pointing to a Linux binary. After configuring
+it, PRP authenticated through Daytona provider ingress and the agent executed in
+`/home/daytona/paperclip-workspace` as the `daytona` user.
+
+That retry did **not** pass connector acceptance: its assigned MCP URL pointed to
+the local host's loopback address, which means the sandbox itself when used
+remotely. No memory provider calls ran. Catalog readiness from
+`connections_search` does not prove remote gateway connectivity. Native assigned
+MCP traffic uses a direct HTTP connection, separate from the PRP control channel;
+the remote Codex path now relays assigned tools through the existing authenticated
+PRP dynamic-tool channel. The control plane retains the short-lived gateway token
+and invokes the same gateway service for discovery and each call. Provider
+credentials, policies, approval checks, and audit records stay server-owned.
+Every call also verifies the native run still owns its task; planning/ask modes
+expose only read tools. Other provider/local paths retain their existing HTTP MCP
+delivery. No tunnel or public board/API exposure is needed for remote Codex.
+Provider threads retain dynamic-tool declarations, so the remote session contract
+also rotates when introducing the relay. An intermediate retry discovered all
+30 tools server-side but resumed an old provider catalog; it made no provider
+calls and is not counted as a pass.
+
+The final browser-triggered run `16c288bc-27c3-4010-b8f8-e3d24d007c59` completed
+**MEM-6** successfully in 1m 36s with the default configured `gpt-5.6-sol` model.
+Task-scoped gateway audit records independently confirm six calls:
+
+- Mem0 `add_memory` stored the exact copper lantern fact with `infer=false`;
+  `search_memories` returned the same ID (`ba30eea2-f68b-4873-acbe-a59dae98ed75`)
+  under user `paperclip-memory-daytona-e2e-20260924`.
+- Cognee `remember` accepted the dedicated
+  `paperclip_memory_daytona_e2e_20260924` dataset, and `recall` returned the fact
+  on the first attempt. Its stdio provider process remains on the control plane;
+  the Daytona agent calls it through PRP.
+- Supermemory `search_memory` succeeded within the existing consented tag with
+  zero results. Exactly one unconsented search returned the expected 403 scope
+  restriction and was audited as `call_failed` / `tool_error`.
+
+No approval prompts, public tunnel, direct provider API fallback, or provider
+credentials in the agent environment were used. All assigned tools remain
+Allowed. This proves the connected Mem0, Cognee, and Supermemory journeys on
+remote native Codex; it does not establish live Zep/Honcho access or Supermemory
+writes beyond its existing read-only consent. Failed setup attempts are retained
+in the task history. The disposable environment is removed after verification.
+
+### Storybook walkthrough checks
+
+The Memory group includes 21 stories covering the catalog, experimental switch,
+all five setup flows, credential forms, OAuth waiting/failure, completion, and
+narrow layouts. Zep and Supermemory now fetch identity fixtures after mount;
+preseeded query-cache data previously left their “Which humans” step waiting
+forever. Browser walkthroughs reach both providers' ready screens with all tools
+allowed. Credential play functions wait for the access button to become enabled;
+browser checks also confirmed rejected Mem0 credentials and narrow Cognee inputs.
+These are simulated provider journeys and do not replace live account tests.
+
+### Automated checks
 
 - `pnpm -r typecheck` and `pnpm build` passed. The final server changes also
   passed `tsc --noEmit`.
@@ -180,6 +248,11 @@ consent remains a separate boundary from Paperclip tool permissions.
   adapter typecheck and build passed.
 - Gateway acceptance/service regression suites: 103 passed after the provider
   error-reporting fix; server typecheck passed.
+- Native relay/session/authority regressions: 534 passed, followed by 36 final
+  relay/authority checks covering readable tool names and live task-mode changes.
+  Final server typecheck and build passed. Relay checks cover configured gateway
+  reuse, gateway errors, revocation, partial bindings, credential isolation, and
+  planning/ask restrictions.
 
 ## Branding provenance
 
