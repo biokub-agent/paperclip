@@ -10440,6 +10440,17 @@ export function createToolGatewayService(
           promptInjectionMode: "block",
         });
         const completedAt = new Date();
+        const validatedMcpResult = connectedMcpExecution
+          ? asRecord(resultValidation.value)
+          : null;
+        if (validatedMcpResult?.error) {
+          throw new ToolGatewayHttpError(
+            502,
+            String(validatedMcpResult.content || validatedMcpResult.error),
+            "tool_error",
+            { execution: connectedMcpExecution?.execution },
+          );
+        }
         await db
           .update(toolInvocations)
           .set({

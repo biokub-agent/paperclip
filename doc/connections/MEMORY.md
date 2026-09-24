@@ -101,7 +101,7 @@ Live observations from the isolated `codex/memory-connectors` checkout:
   first**, then executed after **Allow once**, with both decisions in the audit log.
 - Supermemory: Google sign-in and developer API key creation completed. Hosted
   MCP OAuth connected separately with read-only consent restricted to the test
-  tag and one inert test agent. Search succeeded; a query for an unconsented tag
+  tag and one test agent. Search succeeded; a query for an unconsented tag
   returned the expected provider denial. Live discovery returned 16 tools.
 - Cognee: API key created and Cloud access verified. The official pinned MCP
   client stored synthetic notebook text in a dedicated test dataset and recalled
@@ -109,7 +109,7 @@ Live observations from the isolated `codex/memory-connectors` checkout:
   Paperclip gateway recall returned the expected blue notebook fact (10.6s).
   A nonexistent test dataset returned a tool error, correctly recorded as failure.
 - Zep: Google sign-in reached “Account not found”; account creation is pending.
-- Honcho: Google sign-in succeeded, but organization onboarding twice returned
+- Honcho: Google sign-in succeeded, but organization onboarding repeatedly returned
   “Could not create your organization. Please try again.” No key could be created.
 
 Zep and Honcho remain unverified against authenticated provider accounts. Public
@@ -117,6 +117,46 @@ protocol discovery and deterministic fixtures do not replace that live proof.
 No real memories were uploaded for testing. The synthetic Cognee dataset is
 `paperclip_memory_connector_smoke_20260924`; the Mem0 test user and Supermemory
 consent tag are `paperclip-memory-smoke-20260924`.
+
+### Real agent tasks
+
+Follow-up acceptance testing creates tasks in the browser and assigns a real
+`codex_local` agent in an isolated company. These tests use managed connector
+tools, not provider credentials in the agent environment. Task-scoped connector
+audit records verify the returned provider results independently of the agent's
+completion comment.
+
+The first task exposed a Codex delivery defect: generated MCP config used
+`headers`, which Codex ignores, instead of `http_headers`. The adapter now writes
+the supported field; a regression assertion checks the complete header setting.
+After restarting the test server, the resumed agent received working managed
+tools and retrieved the approved Mem0 memory.
+
+- **MEM-1 / Mem0:** browser-created task requested a synthetic write, paused for
+  **Ask first**, and resumed after the board clicked **Approve & run**. The write
+  executed once and `search_memories` retrieved the same memory ID and exact
+  silver compass fact under user `paperclip-memory-task-e2e-20260924`.
+- **MEM-2 / Cognee:** the task called `remember` and `recall` through the managed
+  stdio gateway. The provider returned the amber telescope fact from dedicated
+  dataset `paperclip_memory_task_e2e_20260924` on the first recall.
+- **MEM-3 / Supermemory:** read-only search succeeded within the consented tag
+  with an honest zero-result response; one out-of-scope search returned the
+  provider's explicit 403 denial. This does not test memory writes under
+  read-only consent. The task exposed a gateway reporting defect: provider
+  `isError: true` was recorded and returned as success. Failed provider calls now
+  produce failed invocation/audit records and an MCP `isError: true` response.
+  A second browser-triggered agent run confirmed both the successful scoped
+  search and the corrected error response; audit records show `call_failed`,
+  `outcome: failure`, and `reasonCode: tool_error` for the denied search.
+- **MEM-4 / Zep** and **MEM-5 / Honcho:** readiness tasks retain the account
+  prerequisites above. They do not count as successful authenticated provider
+  E2E tests.
+
+All tools default to **Allowed**, including writes and destructive actions.
+The temporary Mem0 **Ask first** test override was removed after the approval
+test. Effective agent access was checked again: Mem0 11/11, Cognee 3/3, and
+Supermemory 16/16 allowed, with zero ask-first or off actions. Provider OAuth
+consent remains a separate boundary from Paperclip tool permissions.
 
 ### Local checks
 
@@ -129,11 +169,17 @@ consent tag are `paperclip-memory-smoke-20260924`.
   `git diff --check` passed. Browser review covered both themes, the 320px
   Storybook viewport, disabled setup, the toggle, OAuth waiting, and rejected-key
   retry. Storybook authentication remains simulated.
-- The full repository suite was also started. It reported failures in Slack
+- The full repository suite finished: 686 files passed, six failed, four skipped;
+  13,308 tests passed, 11 failed, 84 skipped. It reported failures in Slack
   callback batching, concurrent workspace port allocation, and deferred heartbeat
   comment batching. Initial connector count/error and instance-setting snapshot
-  failures were corrected and their full targeted suites passed. The full suite
-  is not claimed green.
+  failures were corrected and their full targeted suites passed. That run also
+  loaded memory-normalization code before the final implementation was saved;
+  the final targeted memory suite passed. The full suite is not claimed green.
+- Codex managed-home regression suite: 53 passed after the live-task fix;
+  adapter typecheck and build passed.
+- Gateway acceptance/service regression suites: 103 passed after the provider
+  error-reporting fix; server typecheck passed.
 
 ## Branding provenance
 
